@@ -245,14 +245,19 @@
                 <div class="edit-group">
                     <div class="edit-group-title">绘制 / 标注</div>
                     <div class="edit-col">
-                        <div class="select-props-box">
-                            <div class="sel-title-row">
-                                <button class="btn btn-small" id="selectToolBtn" title="选择并调整箭头 / 文字 / 画笔：拖动端点 / 整体移动 / 缩放 / 旋转，双击文字框可改内容">
+                        <div class="region-panel" id="selectPropsPanel">
+                            <div class="region-panel-head">
+                                <button class="btn btn-small" id="selectToolBtn" title="选择并调整箭头 / 文字 / 画笔：拖动端点 / 整体移动 / 缩放 / 旋转">
                                     <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M4 4l12 4.6-5 2.2 5.5 6-2.5 1.8-5.4-5.9L4 16V4z"/></svg>
                                 </button>
                                 <span class="sel-type-label" id="selTypeLabel"></span>
+                                <button class="btn btn-small" id="resetSelBtn" title="重置选中对象的属性为默认值">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
+                                </button>
                             </div>
-                            <div class="sel-props-box" id="selProps"></div>
+                            <div class="region-panel-body">
+                                <div class="region-list" id="selProps"></div>
+                            </div>
                         </div>
                         <div class="draw-tool-row">
                             <button class="btn btn-small" id="brushToolBtn">画笔</button>

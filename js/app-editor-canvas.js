@@ -47,7 +47,6 @@ editorDisplay.addEventListener('pointerdown', e => {
         s.selectedObj = idx;
         setEditorMode('select');
         renderEditor();
-        openTextEditor(idx);
     } else if (s.mode === 'region' || s.mode === 'ellipse' || s.mode === 'bgsel') {
         editorDrag = { kind: 'region', shape: s.mode, x: p.nx, y: p.ny };
         s.draftRegion = { x: p.nx, y: p.ny, w: 0, h: 0 };
@@ -75,6 +74,7 @@ editorDisplay.addEventListener('pointerdown', e => {
             const hr = Math.max(1, Math.min(s.canvas.height - yr, Math.round(r.h * s.canvas.height)));
             const sub = cctx.getImageData(xr, yr, wr, hr);
             r.area = bgMask(wr, hr, sub, bg, tol, xr, yr);
+            r.baseW = s.canvas.width; r.baseH = s.canvas.height; // 背景色选区像素坐标基于当前画布尺寸
             r.bgColor = bg;
             if (r.parent != null) syncMergedAncestors(r, s.canvas.width, s.canvas.height);
             setEditorMode('none');

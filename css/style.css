@@ -548,12 +548,16 @@ button, input, select { font-family: inherit; }
 .draw-lbl{flex:none;font-size:12px;color:#888;}
 .draw-px{flex:none;font-size:12px;color:#888;}
 /* 选中对象时，属性按钮容器（在选择行下方） */
-.sel-props-box{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:26px;padding:4px 0 6px;margin-bottom:2px;}
+.sel-props-box{display:flex;flex-direction:column;gap:6px;min-height:26px;padding:4px 0 6px;margin-bottom:2px;}
+.sel-row{display:flex;align-items:center;gap:6px;border:1px solid #e4e6ea;border-radius:6px;background:#fff;padding:4px 8px;}
+.select-props-box{border:1px solid #e3e6ef;border-radius:8px;padding:8px 8px 2px;margin-bottom:6px;background:#f7f8fc;}
 /* “选择”及其属性按钮的整体容器 */
 .select-props-box{border:1px solid #e3e6ef;border-radius:8px;padding:8px 8px 2px;margin-bottom:6px;background:#f7f8fc;}
+/* 文字输入框：选中文字时只显示半透明选区背景，文字保持透明（不叠加画布文字，避免出现额外大文字） */
+.text-edit-ta::selection{background:rgba(233,30,99,0.28);color:transparent;}
 /* 标题行：左侧选择按钮，右侧显示所选对象类型名 */
 .sel-title-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
-.sel-type-label{font-size:12px;font-weight:600;color:#555;}
+.sel-type-label{flex:1;text-align:center;font-size:12px;font-weight:600;color:#555;}
 /* 防止在编辑面板 / 区域列表 / 画布上误选中界面文字（Shift 多选时误触发“复制文字”） */
 .edit-group,.edit-row,.region-item,.draw-tool-row,.editor-preview{-webkit-user-select:none;user-select:none;}
 .editor-preview input,.editor-preview textarea,.edit-group input,.edit-group textarea{-webkit-user-select:text;user-select:text;}

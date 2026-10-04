@@ -182,7 +182,20 @@ function mkEmptyArea() { return { kind: 'points', shapeType: RegionShape.MERGED,
 // 查询函数：返回选区负责区域的标准型（points）。若该选区以节省型（几何）存储，则在此计算并转换为标准型。
 function getRegionArea(r, cw, ch) {
     if (!r || !r.area) return mkEmptyArea();
-    if (r.area.kind === 'points') return r.area;
+    if (r.area.kind === 'points') {
+        // 逐像素型：若记录了生成时的基准尺寸且与当前画布尺寸不同，按比例映射（缩放尺寸后选区保持一致）
+        if (r.baseW && r.baseH && (r.baseW !== cw || r.baseH !== ch)) {
+            const out = new Set();
+            const sw = r.baseW, sh = r.baseH;
+            for (const k of r.area.data) {
+                const nx = Math.round((k >> 16) * cw / sw);
+                const ny = Math.round((k & 0xFFFF) * ch / sh);
+                if (nx < cw && ny < ch) out.add(pointKey(nx, ny));
+            }
+            return { kind: 'points', shapeType: r.area.shapeType, data: out };
+        }
+        return r.area;
+    }
     // 节省型（几何）→ 枚举区域内像素转标准型
     const pts = new Set();
     const X = Math.max(0, Math.round(r.x * cw)), Y = Math.max(0, Math.round(r.y * ch));
@@ -220,7 +233,7 @@ function mergedArea(r, cw, ch) {
 function unionRegions(rs, cw, ch) {
     const pts = new Set();
     rs.forEach(r => { const a = getRegionArea(r, cw, ch); for (const k of a.data) pts.add(k); });
-    return { x: 0, y: 0, w: 1, h: 1, shape: 'union', area: { kind: 'points', shapeType: RegionShape.MERGED, data: pts }, brightness: rs[0].brightness, contrast: rs[0].contrast, saturation: rs[0].saturation, pixelate: rs[0].pixelate, transparent: rs.some(r => r.transparent), fillColor: rs[0].fillColor || null, children: null, unionType: null, parent: null };
+    return { x: 0, y: 0, w: 1, h: 1, shape: 'union', area: { kind: 'points', shapeType: RegionShape.MERGED, data: pts }, baseW: cw, baseH: ch, brightness: rs[0].brightness, contrast: rs[0].contrast, saturation: rs[0].saturation, pixelate: rs[0].pixelate, transparent: rs.some(r => r.transparent), fillColor: rs[0].fillColor || null, children: null, unionType: null, parent: null };
 }
 function applyRegions(canvas, s) {
     if (!s.regions.length) return;

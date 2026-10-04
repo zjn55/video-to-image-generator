@@ -43,6 +43,7 @@ function mergedBBox(children) {
 function rebuildMerged(r, cw, ch) {
     if (!r || !r.children || !r.unionType) return;
     r.area = mergedArea(r, cw, ch);
+    r.baseW = cw; r.baseH = ch; // 重算的逐像素坐标基于当前画布尺寸
     const bb = mergedBBox(r.children);
     r.x = bb.x; r.y = bb.y; r.w = Math.max(0.001, bb.w); r.h = Math.max(0.001, bb.h);
 }
@@ -78,6 +79,7 @@ function mergeSelectedRegions(unionType) {
     const merged = { id: ++s.nextRegionId, x: bb.x, y: bb.y, w: Math.max(0.001, bb.w), h: Math.max(0.001, bb.h), brightness: 100, contrast: 100, saturation: 100, pixelate: 1, transparent: false, shape: 'merged', area: null, bgColor: null, fillColor: null, parent: null, children: lifted.slice(), unionType, poly: null };
     lifted.forEach(r => { r.parent = merged.id; });
     merged.area = mergedArea(merged, cw, ch);
+    merged.baseW = cw; merged.baseH = ch; // 合并结果的逐像素坐标基于此画布尺寸
     s.regions.push(merged);
     const newIdx = s.regions.length - 1;
     s.activeRegions = [newIdx]; s.activeRegion = newIdx;
@@ -132,6 +134,7 @@ function buildRegionLasso(pts, canvas) {
     const ptsAbs = new Set();
     for (const k of rel) { const px = k >> 16, py = k & 0xFFFF; ptsAbs.add(pointKey(X + px, Y + py)); }
     base.area = { kind: 'points', shapeType: RegionShape.LASSO, data: ptsAbs };
+    base.baseW = cw; base.baseH = ch; // 记录生成时的画布尺寸，缩放尺寸时按比例映射
     return base;
 }
 function renderRegionList() {
@@ -280,7 +283,7 @@ maskEditBtn.addEventListener('click', () => {
     } else {
         const r = sel[0];
         // 单选：把负责区域转为标准型 points（若为节省型几何，先转换），便于笔刷增删像素
-        if (!r.area || r.area.kind === 'shape') r.area = getRegionArea(r, cw, ch);
+        if (!r.area || r.area.kind === 'shape') { r.area = getRegionArea(r, cw, ch); r.baseW = cw; r.baseH = ch; }
     }
     setEditorMode('maskedit');
     regionHint.textContent = sel.length > 1 ? `编辑选区中（作用于 ${sel.length} 个选中区域的并集）：在图片上拖动用笔刷${s.maskErase ? '橡皮擦清除选中' : '画笔增加选中'}` : `编辑选区中：在图片上拖动用笔刷${s.maskErase ? '橡皮擦清除选中' : '画笔增加选中'}`;
@@ -322,6 +325,7 @@ function applyMaskBrush(p, isDown) {
     let area = r.area;
     if (!area || area.kind === 'shape') { r.area = getRegionArea(r, cw, ch); area = r.area; }
     if (!area || area.kind !== 'points') return;
+    r.baseW = cw; r.baseH = ch; // 笔刷增删像素基于当前画布尺寸，据此记录基准
     const data = area.data;
     const mx = Math.round(p.nx * cw), my = Math.round(p.ny * ch);
     if (mx < 0 || my < 0 || mx >= cw || my >= ch) return;
@@ -418,6 +422,7 @@ function updateBgMaskFromColor() {
     const tol = (parseInt(chromaTol.value) || 0) / 100 * 160;
     const sub = s.canvas.getContext('2d').getImageData(x, y, w, h);
     r.area = bgMask(w, h, sub, r.bgColor, tol, x, y);
+    r.baseW = cw; r.baseH = ch; // 背景色选区像素坐标基于当前画布尺寸
     if (r.parent != null) syncMergedAncestors(r, s.canvas.width, s.canvas.height);
 }
 // 背景色选区高亮临时隐藏（按住 O 查看原图）
@@ -507,6 +512,7 @@ chromaTol.addEventListener('input', () => { chromaTolVal.textContent = chromaTol
                 if (f) {
                     f.children.sort((x, y) => s.regions.indexOf(x) - s.regions.indexOf(y));
                     f.area = mergedArea(f, s.canvas.width, s.canvas.height);
+                    f.baseW = s.canvas.width; f.baseH = s.canvas.height;
                 }
             }
             renderRegionList();
