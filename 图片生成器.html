@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视频截帧 & 精灵图生成工具</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231565c0'/%3E%3Cpath d='M26 20 L46 32 L26 44 Z' fill='white'/%3E%3C/svg%3E">
+<script src="vendor/jszip.js"></script>
+
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container">
+
+<!-- 步骤1：上传 -->
+<div class="step" id="step1">
+    <div class="step-title"><span class="step-num">1</span>上传视频</div>
+    <label class="upload-area" id="uploadArea">
+        <input type="file" id="fileInput" accept="video/*">
+        <div style="font-size:16px; font-weight:500;">点击或拖拽视频到此处</div>
+        <div class="upload-tip">支持 MP4 / WebM / MOV 等浏览器可播放格式</div>
+    </label>
+    <video id="videoPreview" class="video-preview hidden" controls></video>
+</div>
+
+<!-- 步骤2：截帧设置 + 选择 -->
+<div class="step hidden" id="step2">
+    <div class="step-title"><span class="step-num">2</span>截取并选择帧</div>
+
+    <div class="video-scrubber hidden" id="videoScrubber">
+        <video id="videoPreview2" controls></video>
+        <div class="range-wrap">
+            <div class="range-track">
+                <div class="range-fill" id="rangeFill"></div>
+                <input type="range" id="rangeStart" min="0" max="1000" value="0" class="rng rng-start" title="区间起点">
+                <input type="range" id="rangeEnd" min="0" max="1000" value="1000" class="rng rng-end" title="区间终点">
+            </div>
+            <div class="range-info">
+                <span id="rangeInfoTxt"></span>
+                <button class="btn btn-secondary" id="addFrameBtn" title="把视频当前显示的那一帧加入帧列表">＋ 添加当前帧</button>
+            </div>
+            <div class="range-tip">拖动播放条到某一时间点，点「添加当前帧」可手动选取该帧；蓝色区间为截帧范围。</div>
+        </div>
+    </div>
+
+    <div class="control-row">
+        <div class="control-item">
+            <label>截帧间隔：</label>
+            <input type="number" id="interval" value="1" min="0.1" step="0.1">
+            <span style="font-size:13px; color:#666;">秒 / 帧</span>
+        </div>
+        <button class="btn" id="extractBtn">按区间截帧</button>
+        <div class="toolbar">
+            <button class="btn btn-secondary" id="selectAllBtn">全选</button>
+            <button class="btn btn-secondary" id="invertBtn">反选</button>
+        </div>
+    </div>
+
+    <div class="status" id="status2">等待截帧...</div>
+    <div class="progress hidden" id="progress1"><div class="progress-bar" id="progressBar1"></div></div>
+
+    <div class="frames-grid hidden" id="framesGrid"></div>
+
+    <div style="margin-top: 20px; text-align: right;">
+        <button class="btn btn-success" id="goStep3Btn" disabled>下一步：导出设置 →</button>
+    </div>
+</div>
+
+
+<!-- 步骤3：调整帧顺序与分组 -->
+<div class="step hidden" id="stepOrder">
+    <div class="step-title"><span class="step-num">3</span>调整帧顺序与分组</div>
+    <div class="status" id="statusOrder"></div>
+    <div class="groups-area" id="groupsArea"></div>
+    <div class="order-tip">拖动帧缩略图排序；拖到最下方「新建分组」区可创建新分组并放入；双击分组标题可重命名。导出按分组顺序拼接。</div>
+    <div style="margin-top: 20px; text-align: right;">
+        <button class="btn btn-secondary" id="backToStep2Btn">← 返回选择</button>
+        <button class="btn btn-success" id="goStep3Btn2">下一步：导出设置 →</button>
+    </div>
+</div>
+
+
+<!-- 步骤4：导出 -->
+<div class="step hidden" id="step3">
+    <div class="step-title"><span class="step-num">4</span>导出设置</div>
+    <div class="status" id="status3"></div>
+
+    <div class="export-tabs">
+        <button class="tab active" id="tabZip" data-view="viewZip">逐个导出图片</button>
+        <button class="tab" id="tabSprite" data-view="viewSprite">生成精灵图</button>
+    </div>
+
+    <div class="export-view active" id="viewZip">
+        <div class="export-card">
+            <h4>📁 逐个导出图片</h4>
+            <p>勾选要导出的分组；每个分组单独导出为一个文件夹。</p>
+            <div class="zip-folder-name">
+                <span class="zf-label">文件夹命名：</span>
+                <label class="zf-opt"><input type="radio" name="zipNameMode" value="default" checked>使用分组名</label>
+                <label class="zf-opt"><input type="radio" name="zipNameMode" value="custom">自定义前缀</label>
+                <input type="text" id="zipNamePrefix" class="zf-input hidden" placeholder="例如 myframes" title="每个分组文件夹名 = 前缀 + 序号（如 myframes_1、myframes_2）">
+            </div>
+            <div class="zip-groups" id="zipGroupList"></div>
+            <button class="btn" id="exportZipBtn">导出 ZIP 压缩包</button>
+        </div>
+    </div>
+
+    <div class="export-view" id="viewSprite">
+        <div class="export-card">
+            <h4>🖼 生成精灵图（Sprite Sheet）</h4>
+            <p>每个分组一个下拉框：头部的勾选框控制是否生成该分组的精灵图，展开可查看该分组的全部帧并设置它的精灵图约束。</p>
+            <div class="sprite-dropdowns" id="spriteDropdowns"></div>
+            <button class="btn" id="genSpriteBtn">生成预览</button>
+            <div class="sprite-preview hidden" id="spritePreview">
+                <p style="font-size:13px; color:#666; margin-bottom:8px;">预览（共 <span id="sheetCount">0</span> 张）：</p>
+                <div class="sprite-list" id="spriteList"></div>
+                <button class="btn btn-success" id="downloadSpriteBtn" style="margin-top:12px;">下载全部精灵图 (ZIP)</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<!-- ===== 图片编辑模式弹窗 ===== -->
+<div class="modal-mask hidden" id="editorModal">
+    <div class="modal">
+        <div class="modal-head">
+            <div class="modal-title" id="editorTitle">编辑帧</div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary btn-small" id="resetEditBtn">重置</button>
+                <button class="btn btn-small" id="applyOneBtn">应用到当前帧</button>
+                <button class="btn btn-success btn-small" id="applyAllBtn">应用到全部选中帧</button>
+                <button class="btn btn-small btn-close" id="closeEditorBtn" title="关闭">✕</button>
+            </div>
+        </div>
+        <div class="modal-body">
+            <div class="editor-preview">
+                <canvas id="editorDisplay"></canvas>
+            </div>
+            <div class="editor-panel">
+
+                <div class="edit-group">
+                    <div class="edit-group-title">旋转 / 翻转</div>
+                    <div class="edit-row">
+                        <button class="btn btn-small" id="rotLeftBtn">左旋 90°</button>
+                        <button class="btn btn-small" id="rotRightBtn">右旋 90°</button>
+                        <button class="btn btn-small" id="flipHBtn">水平翻转</button>
+                        <button class="btn btn-small" id="flipVBtn">垂直翻转</button>
+                    </div>
+                </div>
+
+                <div class="edit-group">
+                    <div class="edit-group-title">裁剪</div>
+                    <div class="edit-row">
+                        <button class="btn btn-small" id="cropModeBtn">裁剪模式</button>
+                        <button class="btn btn-small btn-secondary" id="resetCropBtn">重置裁剪</button>
+                    </div>
+                </div>
+
+                <div class="edit-group">
+                    <div class="edit-group-title">缩放 / 尺寸 <span class="size" id="curSize"></span></div>
+                    <div class="edit-row">
+                        <input type="number" id="scaleW" min="1">
+                        <span style="color:#888;">×</span>
+                        <input type="number" id="scaleH" min="1">
+                        <label><input type="checkbox" id="lockAspect" checked> 锁定比例</label>
+                        <button class="btn btn-small" id="applyScaleBtn">应用尺寸</button>
+                    </div>
+                </div>
+
+                <div class="edit-group">
+                    <div class="edit-group-title">亮度 / 对比度 / 饱和度 <span class="size" id="adjustScope"></span></div>
+                    <div class="edit-slider"><label>亮度</label><input type="range" id="brightness" min="0" max="200" value="100"><input type="number" id="brightnessNum" min="0" max="200" value="100" title="亮度百分比"><span class="pct">%</span><button class="reset-icon" id="resetBrightnessBtn" title="重置亮度"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg></button></div>
+                    <div class="edit-slider"><label>对比度</label><input type="range" id="contrast" min="0" max="200" value="100"><input type="number" id="contrastNum" min="0" max="200" value="100" title="对比度百分比"><span class="pct">%</span><button class="reset-icon" id="resetContrastBtn" title="重置对比度"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg></button></div>
+                    <div class="edit-slider"><label>饱和度</label><input type="range" id="saturation" min="0" max="200" value="100"><input type="number" id="saturationNum" min="0" max="200" value="100" title="饱和度百分比"><span class="pct">%</span><button class="reset-icon" id="resetSaturationBtn" title="重置饱和度"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg></button></div>
+                </div>
+
+                <div class="edit-group">
+                    <div class="edit-group-title">像素化 <span class="size" id="pixelVal">关</span></div>
+                    <input type="range" id="pixelate" min="1" max="50" value="1" style="width:100%;">
+                </div>
+
+                <div class="edit-group">
+                    <div class="edit-group-title">局部调整</div>
+                    <div class="edit-row">
+                        <button class="btn btn-small" id="regionModeBtn" title="拖动框出矩形区域">矩形</button>
+                        <button class="btn btn-small" id="ellipseModeBtn" title="拖动框出椭圆区域">椭圆</button>
+                        <button class="btn btn-small" id="lassoModeBtn" title="按住左键画线围出区域，松开自动闭合">套索</button>
+                        <button class="btn btn-small" id="bgselModeBtn" title="框选范围后点取背景色，把符合同色的像素选为区域">背景色</button>
+                        <button class="btn btn-small btn-secondary" id="clearRegionBtn" title="把当前选中区域内被选中的像素变成透明">清除选区(透明)</button>
+                    </div>
+                    <div id="regionList"></div>
+                    <div class="edit-row" style="margin-top:8px;" id="regionFillRow">
+                        <label style="flex:none;font-size:12px;color:#666;">填充颜色</label>
+                        <input type="color" id="regionFillColor" value="#ff0000" title="给当前选区选中的像素填充此颜色" style="width:40px;height:28px;padding:0;border:none;background:none;cursor:pointer;flex:none;">
+                        <button class="btn btn-small" id="applyFillBtn" title="把填充色应用到当前选区选中的像素">应用填充色</button>
+                        <button class="btn btn-small btn-secondary" id="clearFillBtn" title="撤销填充色，恢复选区原色">清除填充色</button>
+                    </div>
+                    <div class="region-hint" id="regionHint">矩形 / 椭圆 / 套索：圈出一块区域单独编辑；背景色：把同色像素选为一块区域；“清除选区(透明)”把选中区域删成透明。</div>
+                    <div class="bgsel-controls hidden" id="bgselControls">
+                        <div class="edit-row">
+                            <button class="btn btn-small" id="pickBgBtn">点图取背景色</button>
+                            <span class="chroma-swatch" id="chromaSwatch" title="当前背景色"></span>
+                            <button class="btn btn-small btn-secondary" id="clearChromaBtn" title="重置取色状态">重置取色</button>
+                        </div>
+                        <div class="edit-slider"><label>容差</label><input type="range" id="chromaTol" min="0" max="100" value="25"><span id="chromaTolVal" style="width:32px;text-align:right;color:#666;flex:none;">25</span></div>
+                        <div class="edit-slider"><label>羽化</label><input type="range" id="chromaFeather" min="0" max="30" value="8"><span id="chromaFeatherVal" style="width:32px;text-align:right;color:#666;flex:none;">8</span></div>
+                        <div class="region-hint" id="chromaHint"></div>
+                    </div>
+                </div>
+
+                <div class="edit-group">
+                    <div class="edit-group-title">选区操作</div>
+                    <div class="edit-row">
+                        <button class="btn btn-small" id="eraseBtn">去水印 / 移除对象</button>
+                        <button class="btn btn-small" id="keepBtn">只保留选区</button>
+                        <button class="btn btn-small btn-secondary" id="clearEraseBtn">撤销擦除</button>
+                    </div>
+                    <div class="region-hint" id="selectHint">“去水印 / 移除对象”：框选水印或多余对象，用周围像素填充；可多次框选移除多处。“只保留选区”：框选对象，其余部分全部删除。</div>
+                </div>
+
+                <div class="edit-group">
+                    <div class="edit-group-title">绘制 / 标注</div>
+                    <div class="edit-row">
+                        <button class="btn btn-small" id="selectToolBtn" title="选择并调整箭头 / 文字：拖动端点 / 整体移动 / 缩放 / 旋转，双击文字框可改内容">选择</button>
+                        <button class="btn btn-small" id="brushToolBtn">画笔</button>
+                        <button class="btn btn-small" id="arrowToolBtn">箭头</button>
+                        <button class="btn btn-small" id="textToolBtn">文字</button>
+                        <input type="color" id="drawColor" value="#ff0000" title="颜色">
+                        <input type="range" id="drawSize" min="1" max="40" value="3" title="粗细（滑块）" style="width:70px;">
+                        <input type="number" id="drawSizeInput" min="1" max="200" value="3" title="画笔像素粗细" style="width:58px;">
+                        <span style="font-size:12px;color:#888;">px</span>
+                        <label style="flex:none;font-size:12px;color:#888;">字号</label>
+                        <input type="number" id="textSizeIn" min="8" max="400" value="28" title="文字字号（像素）" style="width:58px;">
+                        <span style="font-size:12px;color:#888;">px</span>
+                        <button class="btn btn-small btn-secondary" id="delSelectedBtn" title="删除当前选中的箭头 / 文字">删除选中</button>
+                        <button class="btn btn-small btn-secondary" id="undoStrokeBtn" title="撤销上一步标注 / 变换">撤销</button>
+                        <button class="btn btn-small btn-secondary" id="redoStrokeBtn" title="重做">重做</button>
+                        <button class="btn btn-small btn-secondary" id="clearAnnoBtn">清除标注</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
