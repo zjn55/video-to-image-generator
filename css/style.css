@@ -51,6 +51,17 @@ body {
 }
 .upload-area input { display: none; }
 .upload-tip { color: #666; margin-top: 8px; font-size: 14px; }
+.img-upload-row { display: flex; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+.img-upload-row .upload-tip { margin-top: 0; }
+.img-upload-area {
+    display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; cursor: pointer; padding: 16px 26px;
+    border: 2px dashed #bbb; border-radius: 10px; background: #f8fafc;
+    color: #333; min-width: 220px; text-align: center;
+    transition: border-color .15s, background .15s;
+}
+.img-upload-area:hover, .img-upload-area.dragover { border-color: #1565c0; background: #eef4fd; }
+.img-upload-area input { display: none; }
 
 .control-row {
     display: flex;
@@ -488,6 +499,21 @@ body {
 .edit-group input[type="number"] { width: 76px; padding: 5px 6px; border: 1px solid #d8dce2; border-radius: 6px; font-size: 13px; }
 .edit-group input[type="color"] { width: 34px; height: 26px; border: 1px solid #d8dce2; border-radius: 4px; padding: 0; background: #fff; }
 .edit-group input[type="range"] { accent-color: #1565c0; }
+.region-panel { border: 1px solid #e4e6ea; border-radius: 8px; background: #fafbfc; margin-top: 10px; overflow: hidden; }
+.region-panel-head { display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: #f0f2f5; border-bottom: 1px solid #e4e6ea; }
+.region-panel-title { flex: 1; font-size: 13px; font-weight: 600; color: #333; cursor: pointer; padding: 3px 4px; border-radius: 4px; }
+.region-panel-title:hover { background: #e3e7ee; }
+.region-panel-title input { width: 100%; box-sizing: border-box; border: 1px solid #1565c0; border-radius: 4px; padding: 2px 4px; font-size: 13px; font-weight: 500; }
+.region-panel-toggle { border: none; background: none; cursor: pointer; color: #666; font-size: 13px; padding: 2px 6px; border-radius: 4px; transition: transform 0.15s; }
+.region-panel-toggle:hover { background: #e3e7ee; }
+.region-merge-tools { display: flex; gap: 2px; }
+.region-merge-btn { width: 26px; height: 24px; border: 1px solid #e4e6ea; border-radius: 5px; background: #fff; color: #b6bcc6; cursor: default; font-size: 15px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+.region-merge-btn:not(:disabled) { color: #1565c0; border-color: #bcd2ef; background: #eef4ff; cursor: pointer; }
+.region-merge-btn:not(:disabled):hover { background: #dfe9fa; border-color: #1565c0; }
+.region-merge-btn:disabled { opacity: 0.45; }
+.region-panel-body { padding: 8px; }
+.region-panel.collapsed .region-panel-body { display: none; }
+.region-panel.collapsed .region-panel-toggle { transform: rotate(-90deg); }
 .region-hint { font-size: 12px; color: #888; margin-top: 6px; line-height: 1.5; }
 .region-list { display: flex; flex-direction: column; gap: 5px; }
 .region-item {
@@ -497,10 +523,14 @@ body {
 }
 .region-item.active { border-color: #1565c0; background: #eef4ff; }
 .region-item .region-name { flex: 1; color: #333; }
+.region-item .region-caret { flex: none; width: 16px; color: #888; font-size: 12px; text-align: center; cursor: pointer; user-select: none; }
 .region-item.active .region-name { color: #1565c0; font-weight: 600; }
 .region-item button { border: none; background: none; color: #888; cursor: pointer; font-size: 13px; padding: 2px 4px; }
 .region-item button:hover { color: #1565c0; }
 .region-item .region-del:hover { color: #d32f2f; }
+.region-item[data-rindex] { cursor: grab; }
+.region-item.dragging { opacity: 0.45; }
+.region-drop-line { position: absolute; left: 0; right: 0; height: 3px; background: #111; border-radius: 2px; pointer-events: none; z-index: 5; display: none; }
 .chroma-swatch {
     width: 22px; height: 22px; border: 1px solid #d8dce2; border-radius: 4px; flex: none;
     display: inline-block; background: repeating-conic-gradient(#f0f1f3 0% 25%, #fff 0% 50%) 0 0 / 10px 10px;
@@ -508,3 +538,22 @@ body {
 .bgsel-controls { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e0e3e8; }
 .edit-row label { font-size: 13px; color: #555; display: inline-flex; align-items: center; gap: 4px; }
 button, input, select { font-family: inherit; }
+.edit-subtitle{font-size:12px;color:#8a8a8a;font-weight:600;margin:10px 0 4px;padding-top:8px;border-top:1px solid #e8e8e8;display:flex;align-items:center;gap:4px;}
+.edit-subtitle:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.edit-group #regionPanel { margin-top: 10px; }
+.edit-row.mask-tools{flex-wrap:wrap;row-gap:6px;}
+/* 绘制/标注竖排：每个工具一行，工具控件横向 */
+.edit-col{display:flex;flex-direction:column;gap:6px;}
+.draw-tool-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.draw-lbl{flex:none;font-size:12px;color:#888;}
+.draw-px{flex:none;font-size:12px;color:#888;}
+/* 选中对象时，属性按钮容器（在选择行下方） */
+.sel-props-box{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:26px;padding:4px 0 6px;margin-bottom:2px;}
+/* “选择”及其属性按钮的整体容器 */
+.select-props-box{border:1px solid #e3e6ef;border-radius:8px;padding:8px 8px 2px;margin-bottom:6px;background:#f7f8fc;}
+/* 标题行：左侧选择按钮，右侧显示所选对象类型名 */
+.sel-title-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.sel-type-label{font-size:12px;font-weight:600;color:#555;}
+/* 防止在编辑面板 / 区域列表 / 画布上误选中界面文字（Shift 多选时误触发“复制文字”） */
+.edit-group,.edit-row,.region-item,.draw-tool-row,.editor-preview{-webkit-user-select:none;user-select:none;}
+.editor-preview input,.editor-preview textarea,.edit-group input,.edit-group textarea{-webkit-user-select:text;user-select:text;}
