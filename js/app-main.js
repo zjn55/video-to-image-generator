@@ -87,6 +87,206 @@ rangeEnd.addEventListener('input', () => {
     updateRangeUI();
 });
 
+// ========== 提取音频（第一步，受区间影响） ==========
+function encodeWavFromBuffer(buf, s0, e0) {
+    const ch = buf.numberOfChannels, sr = buf.sampleRate;
+    const len = e0 - s0, bytesPerSample = 2, blockAlign = ch * bytesPerSample;
+    const dataSize = len * blockAlign;
+    const buffer = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(buffer);
+    const ws = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+    ws(0, 'RIFF'); view.setUint32(4, 36 + dataSize, true); ws(8, 'WAVE');
+    ws(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+    view.setUint16(22, ch, true); view.setUint32(24, sr, true);
+    view.setUint32(28, sr * blockAlign, true); view.setUint16(32, blockAlign, true); view.setUint16(34, 16, true);
+    ws(36, 'data'); view.setUint32(40, dataSize, true);
+    let o = 44;
+    for (let i = 0; i < len; i++) {
+        for (let c = 0; c < ch; c++) {
+            const s = Math.max(-1, Math.min(1, buf.getChannelData(c)[s0 + i]));
+            view.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true); o += 2;
+        }
+    }
+    return new Blob([buffer], { type: 'audio/wav' });
+}
+function extractAudio() {
+    if (!videoFile) { alert('请先上传视频'); return; }
+    const range = rangeSecs();
+    if (range.end - range.start < 0.01) { alert('区间无效，请设置有效区间'); return; }
+    extractAudioBtn.disabled = true;
+    audioStatus.textContent = '正在提取音频...';
+    audioStatus.classList.remove('hidden');
+    videoFile.arrayBuffer().then(ab => {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        return ctx.decodeAudioData(ab).then(buf => {
+            const sr = buf.sampleRate;
+            let s0 = Math.floor(range.start * sr), e0 = Math.floor(range.end * sr);
+            s0 = Math.max(0, s0); e0 = Math.min(buf.length, e0);
+            if (e0 <= s0) throw new Error('区间内没有可提取的音频');
+            const wav = encodeWavFromBuffer(buf, s0, e0);
+            const url = URL.createObjectURL(wav);
+            const name = (videoFile.name || 'video').replace(/\.[^.]+$/, '') + '.wav';
+            audioDownloadLink.href = url;
+            audioDownloadLink.download = name;
+            audioDownloadLink.classList.remove('hidden');
+            audioStatus.textContent = `已提取区间 ${range.start.toFixed(2)}s ~ ${range.end.toFixed(2)}s 的音频（${((e0 - s0) / sr).toFixed(2)}s）`;
+            extractAudioBtn.disabled = false;
+        });
+    }).catch(err => {
+        alert('提取音频失败：' + err.message);
+        extractAudioBtn.disabled = false;
+        audioStatus.textContent = '';
+    });
+}
+extractAudioBtn.addEventListener('click', extractAudio);
+
+// ========== 转换视频格式（第一步） ==========
+// 视频格式转换：优先调用本机 ffmpeg（经本地服务，支持 MP4/WebM/OGV/MOV/AVI，保真）；
+// 未检测到 ffmpeg 时回退到浏览器原生 MediaRecorder（仅 MP4/WebM）。
+let convVideo = null;
+let hasServerFfmpeg = false;
+let IS_DESKTOP = false;
+// 桌面应用（pywebview）接口注入完成后，才开启桌面模式并重新填充格式选项
+window.addEventListener('pywebviewready', function () {
+    IS_DESKTOP = !!(window.pywebview && window.pywebview.api && window.pywebview.api.convert_video);
+    fillConvertFormats();
+});
+const REC_MIME = {
+    mp4: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    webm: 'video/webm;codecs=vp9,opus'
+};
+const SERVER_FMTS = [
+    ['mp4', 'MP4 (H.264)'],
+    ['webm', 'WebM (VP8)'],
+    ['ogv', 'OGV (Theora)'],
+    ['mov', 'MOV (H.264)'],
+    ['avi', 'AVI (MPEG4)']
+];
+function fillConvertFormats() {
+    const sel = document.getElementById('convertFmt');
+    if (!sel) return;
+    sel.innerHTML = '';
+    function addOpt(v, l) {
+        const o = document.createElement('option');
+        o.value = v; o.textContent = l;
+        sel.appendChild(o);
+    }
+    function mp4WebmRec() {
+        [['mp4', 'MP4 (H.264)'], ['webm', 'WebM (VP8)']].forEach(([v, l]) => {
+            if (window.MediaRecorder && REC_MIME[v] && MediaRecorder.isTypeSupported(REC_MIME[v])) addOpt(v, l);
+        });
+    }
+    if (IS_DESKTOP) {
+        hasServerFfmpeg = true;
+        SERVER_FMTS.forEach(([v, l]) => addOpt(v, l));
+        const st = document.getElementById('convertStatus');
+        if (st) { st.classList.add('hidden'); st.textContent = ''; }
+        return;
+    }
+    fetch('/api/formats', { cache: 'no-store' }).then(r => r.json()).then(j => {
+        hasServerFfmpeg = !!j.ffmpeg;
+        if (hasServerFfmpeg) SERVER_FMTS.forEach(([v, l]) => addOpt(v, l));
+        else mp4WebmRec();
+    }).catch(() => {
+        hasServerFfmpeg = false;
+        mp4WebmRec();
+        const st = document.getElementById('convertStatus');
+        if (st) {
+            st.classList.remove('hidden');
+            st.textContent = '完整格式转换（OGV / MOV / AVI）需双击「启动工具.bat」启动本地服务后使用';
+        }
+    });
+}
+function convertVideo() {
+    if (!videoFile) { alert('请先上传视频'); return; }
+    if (IS_DESKTOP) convertDesktop();
+    else if (hasServerFfmpeg) convertServer();
+    else convertMediaRecorder();
+}
+async function convertServer() {
+    const fmt = convertFmt.value;
+    convertBtn.disabled = true;
+    convertStatus.classList.remove('hidden');
+    convertStatus.textContent = '正在转换（格式：' + fmt + '）...';
+    convertDlLink.classList.add('hidden');
+    try {
+        const resp = await fetch('/api/convert?format=' + fmt, { method: 'POST', body: videoFile });
+        if (!resp.ok) {
+            const t = await resp.text();
+            throw new Error(t || ('HTTP ' + resp.status));
+        }
+        const blob = await resp.blob();
+        const name = (videoFile.name || 'video').replace(/\.[^.]+$/, '') + '.' + fmt;
+        const url = URL.createObjectURL(blob);
+        convertDlLink.href = url; convertDlLink.download = name; convertDlLink.classList.remove('hidden');
+        convertStatus.textContent = '转换完成（' + (blob.size / 1024 / 1024).toFixed(2) + ' MB）';
+    } catch (e) {
+        convertStatus.textContent = '转换失败：' + (e.message || e);
+    }
+    convertBtn.disabled = false;
+}
+async function convertDesktop() {
+    const fmt = convertFmt.value;
+    convertBtn.disabled = true;
+    convertStatus.classList.remove('hidden');
+    convertStatus.textContent = '正在转换（格式：' + fmt + '）...';
+    convertDlLink.classList.add('hidden');
+    try {
+        const buf = await videoFile.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let bin = '';
+        const chunk = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunk) {
+            bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+        }
+        const b64 = btoa(bin);
+        const result = await window.pywebview.api.convert_video(b64, fmt);
+        if (result && /^[a-zA-Z]:[\\/]/.test(result)) {
+            convertStatus.textContent = '转换完成，已保存到：' + result;
+        } else {
+            throw new Error(result || '转换失败');
+        }
+    } catch (e) {
+        convertStatus.textContent = '转换失败：' + (e.message || e);
+    }
+    convertBtn.disabled = false;
+}
+function convertMediaRecorder() {
+    if (!window.MediaRecorder) { alert('当前浏览器不支持视频录制转码'); return; }
+    const mt = REC_MIME[convertFmt.value];
+    if (!mt) { alert('当前浏览器不支持所选格式的录制'); return; }
+    if (convVideo) { convVideo.rec.stop(); convVideo.src.pause(); }
+    const cap = videoPreview.captureStream ? videoPreview.captureStream() : (videoPreview.mozCaptureStream ? videoPreview.mozCaptureStream() : null);
+    if (!cap) { alert('当前浏览器不支持画面捕获，无法转换'); return; }
+    const rec = new MediaRecorder(cap, { mimeType: mt });
+    const chunks = [];
+    convertBtn.disabled = true;
+    convertStatus.classList.remove('hidden');
+    convertStatus.textContent = '正在转换（需完整播放一遍视频；为保留音轨，播放时会出声）...';
+    convertDlLink.classList.add('hidden');
+    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    rec.onstop = () => {
+        const blob = new Blob(chunks, { type: mt });
+        const url = URL.createObjectURL(blob);
+        const name = (videoFile.name || 'video').replace(/\.[^.]+$/, '') + '_converted.' + convertFmt.value;
+        convertDlLink.href = url;
+        convertDlLink.download = name;
+        convertDlLink.classList.remove('hidden');
+        convertStatus.textContent = `转换完成（${(blob.size / 1024 / 1024).toFixed(2)} MB）`;
+        convertBtn.disabled = false;
+        convVideo = null;
+    };
+    const vid = videoPreview;
+    vid.muted = false; // 保留音轨需出声播放
+    vid.onended = () => { if (convVideo) convVideo.rec.stop(); };
+    convVideo = { rec, src: vid };
+    rec.start();
+    vid.currentTime = 0;
+    vid.play().catch(() => { });
+}
+convertBtn.addEventListener('click', convertVideo);
+fillConvertFormats();
+
 // ========== 截帧 ==========
 // 截取视频在 time 秒处的一帧并加入 frames（按时间排序、自动去重、重新编号）
 async function captureFrameAt(time) {
@@ -279,8 +479,43 @@ function rebuildFrameGroups() {
 function syncFrameOrder() {
     frameOrder = frameGroups.flatMap(g => g.frames);
 }
+// ---- 分组帧动画预览播放 ----
+const groupPlayers = {};
+function stopPlay(gi) { const p = groupPlayers[gi]; if (p && p.timer) clearInterval(p.timer); groupPlayers[gi] = null; }
+function stopAllPlay() { for (const k in groupPlayers) { const p = groupPlayers[k]; if (p && p.timer) clearInterval(p.timer); } for (const k in groupPlayers) delete groupPlayers[k]; }
+function clearPlayHighlight(gi) {
+    const block = document.querySelector('.group-block[data-gi="' + gi + '"]');
+    if (block) block.querySelectorAll('.order-item').forEach(it => it.classList.remove('playing'));
+}
+function showFrame(gi, idx, preview) {
+    const g = frameGroups[gi]; if (!g) return;
+    preview.src = frames[g.frames[idx]].dataUrl;
+    const block = document.querySelector('.group-block[data-gi="' + gi + '"]');
+    if (block) { const items = block.querySelectorAll('.order-item'); items.forEach((it, i) => it.classList.toggle('playing', i === idx)); }
+}
+function startPlay(gi, fpsIn, loopChk, preview, btn) {
+    const g = frameGroups[gi]; if (!g || g.frames.length < 2) { alert('该分组帧数不足，无法播放'); return; }
+    stopPlay(gi);
+    const fps = Math.max(1, Math.min(60, parseInt(fpsIn.value) || 10));
+    const p = { idx: 0, fps, loop: loopChk.checked, timer: null, preview, btn };
+    groupPlayers[gi] = p;
+    if (btn) btn.textContent = '⏸';
+    const step = () => {
+        p.idx++;
+        if (p.idx >= g.frames.length) { if (p.loop) { p.idx = 0; } else { stopPlay(gi); if (btn) btn.textContent = '▶'; clearPlayHighlight(gi); return; } }
+        showFrame(gi, p.idx, preview);
+    };
+    showFrame(gi, p.idx, preview);
+    p.timer = setInterval(step, 1000 / fps);
+}
+function togglePlay(gi, fpsIn, loopChk, preview, btn) {
+    if (groupPlayers[gi]) { stopPlay(gi); btn.textContent = '▶'; clearPlayHighlight(gi); }
+    else startPlay(gi, fpsIn, loopChk, preview, btn);
+}
+
 function renderGroupsArea() {
     groupsArea.innerHTML = '';
+    stopAllPlay();
     frameGroups.forEach((g, gi) => {
         const block = document.createElement('div');
         block.className = 'group-block';
@@ -306,6 +541,32 @@ function renderGroupsArea() {
             head.appendChild(del);
         }
         block.appendChild(head);
+        // 播放预览条
+        const play = document.createElement('div');
+        play.className = 'group-play';
+        const playBtn = document.createElement('button');
+        playBtn.className = 'play-btn';
+        playBtn.textContent = '▶';
+        playBtn.title = '播放 / 停止';
+        const fpsLab = document.createElement('span');
+        fpsLab.textContent = '频率';
+        const fpsIn = document.createElement('input');
+        fpsIn.type = 'number'; fpsIn.className = 'play-fps'; fpsIn.value = '10'; fpsIn.min = 1; fpsIn.max = 60;
+        const fpsU = document.createElement('span');
+        fpsU.textContent = 'fps';
+        const loopLab = document.createElement('label');
+        loopLab.className = 'play-loop-lab';
+        const loopChk = document.createElement('input');
+        loopChk.type = 'checkbox'; loopChk.className = 'play-loop'; loopChk.checked = true;
+        loopLab.appendChild(loopChk); loopLab.appendChild(document.createTextNode('循环'));
+        const preview = document.createElement('img');
+        preview.className = 'play-preview'; preview.alt = '';
+        if (g.frames.length) preview.src = frames[g.frames[0]].dataUrl;
+        playBtn.addEventListener('click', () => togglePlay(gi, fpsIn, loopChk, preview, playBtn));
+        fpsIn.addEventListener('change', () => { if (groupPlayers[gi]) startPlay(gi, fpsIn, loopChk, preview, groupPlayers[gi].btn); });
+        loopChk.addEventListener('change', () => { if (groupPlayers[gi]) groupPlayers[gi].loop = loopChk.checked; });
+        play.appendChild(playBtn); play.appendChild(fpsLab); play.appendChild(fpsIn); play.appendChild(fpsU); play.appendChild(loopLab); play.appendChild(preview);
+        block.appendChild(play);
         // 帧列表
         const framesBox = document.createElement('div');
         framesBox.className = 'group-frames';
@@ -488,20 +749,51 @@ function renderZipGroupList() {
     zipGroupList.innerHTML = '';
     if (!frameGroups.length) { zipGroupList.innerHTML = '<div class="zip-group-none">暂无分组，请先在第三步整理帧</div>'; return; }
     frameGroups.forEach((g, gi) => {
-        const row = document.createElement('label');
-        row.className = 'zip-group';
+        // 每个分组一个可展开下拉框：头部勾选 + 名称 + 帧数，点击展开该分组帧缩略图预览
+        const dd = document.createElement('div');
+        dd.className = 'sprite-dropdown';
+        const head = document.createElement('div');
+        head.className = 'sprite-dropdown-head';
         const cb = document.createElement('input');
         cb.type = 'checkbox';
+        cb.className = 'sprite-dd-check';
         cb.checked = zipChecked[gi] !== false;
         cb.addEventListener('change', () => { zipChecked[gi] = cb.checked; });
-        const nm = document.createElement('span');
-        nm.className = 'zip-group-name';
-        nm.textContent = g.name;
-        const cnt = document.createElement('span');
-        cnt.className = 'zip-group-count';
-        cnt.textContent = `${g.frames.length} 帧`;
-        row.appendChild(cb); row.appendChild(nm); row.appendChild(cnt);
-        zipGroupList.appendChild(row);
+        cb.addEventListener('click', e => { e.stopPropagation(); });
+        const title = document.createElement('span');
+        title.textContent = g.name + (g.frames.length ? `（${g.frames.length} 帧）` : '（0 帧）');
+        const arrow = document.createElement('span');
+        arrow.className = 'sprite-dd-arrow'; arrow.textContent = '▾';
+        head.appendChild(cb); head.appendChild(title); head.appendChild(arrow);
+        const body = document.createElement('div');
+        body.className = 'sprite-dropdown-body hidden';
+        const framesRow = document.createElement('div');
+        framesRow.className = 'sprite-dd-frames';
+        if (!g.frames.length) {
+            framesRow.innerHTML = '<div class="zip-group-none">该分组暂无帧</div>';
+        } else {
+            g.frames.forEach(idx => {
+                const f = frames[idx];
+                if (!f) return;
+                const t = document.createElement('div');
+                t.className = 'sprite-dd-frame';
+                const img = document.createElement('img');
+                img.src = f.dataUrl || f.img.toDataURL();
+                img.alt = '帧' + idx;
+                t.appendChild(img);
+                const cap = document.createElement('span');
+                cap.textContent = '#' + idx;
+                t.appendChild(cap);
+                framesRow.appendChild(t);
+            });
+        }
+        body.appendChild(framesRow);
+        dd.appendChild(head); dd.appendChild(body);
+        head.addEventListener('click', () => {
+            body.classList.toggle('hidden');
+            dd.classList.toggle('open', !body.classList.contains('hidden'));
+        });
+        zipGroupList.appendChild(dd);
     });
 }
 function defaultSpriteSettings() {

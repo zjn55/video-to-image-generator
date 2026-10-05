@@ -103,6 +103,41 @@ body {
     border-radius: 8px;
     background: #000;
 }
+.audio-extract-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 6px 0 2px;
+    flex-wrap: wrap;
+}
+.audio-extract-row .audio-status {
+    color: #666;
+    font-size: 13px;
+}
+.audio-dl {
+    color: #1565c0;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border: 1px solid #1565c0;
+    border-radius: 6px;
+}
+.audio-dl:hover {
+    background: #eef4fc;
+}
+.convert-row {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin: 6px 0 2px;
+}
+.convert-row .convert-label {
+    font-size: 13px; color: #333;
+    display: flex; align-items: center; gap: 6px;
+}
+.convert-row select {
+    padding: 3px 6px; border: 1px solid #cfd4da; border-radius: 5px;
+    font: inherit; background: #fff; color: #333;
+}
 .video-scrubber {
     margin: 10px 0 18px;
     padding: 12px;
@@ -176,6 +211,14 @@ body {
     font-size: 13px; color: #333;
 }
 .range-info button { flex: none; }
+.range-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex: none;
+}
+.range-actions .audio-status { color: #666; font-size: 13px; }
 .range-tip { font-size: 12px; color: #888; margin-top: 4px; }
 
 .frames-grid {
@@ -300,6 +343,17 @@ body {
 .groups-area { margin-top: 14px; display: flex; flex-direction: column; gap: 14px; position: relative; }
 .group-block { border: 1px solid #e4e6ea; border-radius: 10px; padding: 12px; background: #fbfbfc; }
 .group-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.group-play {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 6px 8px; margin-bottom: 10px;
+    border: 1px dashed #d7dbe0; border-radius: 6px; background: #fbfcfe;
+}
+.group-play .play-btn { border: none; background: #1565c0; color: #fff; border-radius: 5px; padding: 3px 9px; cursor: pointer; font-size: 13px; }
+.group-play .play-btn:hover { background: #0d47a1; }
+.group-play .play-fps { width: 56px; padding: 2px 4px; border: 1px solid #cfd4da; border-radius: 4px; font: inherit; }
+.group-play label { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #555; cursor: pointer; }
+.group-play .play-preview { flex-basis: 100%; width: 100%; max-height: 300px; object-fit: contain; border: 1px solid #e2e6ea; border-radius: 6px; background: #fff; margin-top: 4px; }
+.order-item.playing { outline: 2px solid #f44336; box-shadow: 0 0 6px rgba(244, 67, 54, .4); }
 .group-name { font-weight: 600; color: #333; cursor: text; }
 .group-name-input { font: inherit; font-weight: 600; color: #333; border: 1px solid #1565c0; border-radius: 4px; padding: 1px 4px; width: 140px; }
 .group-count { font-size: 12px; color: #888; }

@@ -29,6 +29,12 @@
         <span class="upload-tip">图片将直接打开图片编辑器，无需经过截帧步骤</span>
     </div>
     <video id="videoPreview" class="video-preview hidden" controls></video>
+    <div class="convert-row" id="convertRow">
+        <button class="btn btn-secondary" id="convertBtn" title="把当前视频重新录制为另一种格式（需完整播放一遍）">转换格式</button>
+        <label class="convert-label">目标格式：<select id="convertFmt"></select></label>
+        <a class="hidden audio-dl" id="convertDlLink" download>下载转换结果</a>
+        <span class="audio-status" id="convertStatus"></span>
+    </div>
 </div>
 
 <!-- 步骤2：截帧设置 + 选择 -->
@@ -45,7 +51,12 @@
             </div>
             <div class="range-info">
                 <span id="rangeInfoTxt"></span>
-                <button class="btn btn-secondary" id="addFrameBtn" title="把视频当前显示的那一帧加入帧列表">＋ 添加当前帧</button>
+                <div class="range-actions">
+                    <button class="btn btn-secondary" id="addFrameBtn" title="把视频当前显示的那一帧加入帧列表">＋ 添加当前帧</button>
+                    <button class="btn btn-secondary" id="extractAudioBtn" title="提取当前视频的音频，默认整段；设置蓝色截帧区间后按区间提取">♪ 提取音频</button>
+                    <a class="hidden audio-dl" id="audioDownloadLink" download>下载音频</a>
+                    <span class="audio-status" id="audioStatus"></span>
+                </div>
             </div>
             <div class="range-tip">拖动播放条到某一时间点，点「添加当前帧」可手动选取该帧；蓝色区间为截帧范围。</div>
         </div>
