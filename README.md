@@ -60,7 +60,7 @@
 │   └── jszip.js        # ZIP 打包库
 ├── ffmpeg/             # 内置 ffmpeg.exe（格式转换用；GitHub 未含，需自备）
 ├── desktop_app.py      # 桌面应用入口（pywebview + ffmpeg 调用）
-├── build.bat           # 重新打包 exe 的脚本
+├── build.py             # 重新打包 exe 的脚本（运行：python build.py）
 ├── dist/               # 打包产物（桌面版 exe 所在）
 └── README.md
 ```
@@ -68,7 +68,7 @@
 ## 重新打包（修改后更新 exe）
 
 1. 修改代码：前端改 `图片生成器.html` / `js\*.js` / `css\style.css`；后端（转换参数等）改 `desktop_app.py`。
-2. 双击 **`build.bat`** 自动重新打包（约 1 分钟），新 exe 覆盖到 `dist\视频转图片生成工具\`。
+2. 运行 **`python build.py`** 自动重新打包（约 1 分钟），新 exe 覆盖到 `dist\视频转图片生成工具\`。
 3. 运行新 exe 即可。
 
 > 若更换 ffmpeg：把新的 `ffmpeg.exe` 放到 `ffmpeg\` 后重新打包。

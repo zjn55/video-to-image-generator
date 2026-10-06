@@ -14,7 +14,9 @@
 
 <!-- 步骤1：上传 -->
 <div class="step" id="step1">
-    <div class="step-title"><span class="step-num">1</span>上传视频</div>
+    <div class="step-title"><span class="step-num">1</span>上传视频
+        <button class="btn btn-secondary btn-small" id="settingsBtn" title="导出保存路径等设置" style="float:right;">⚙ 设置</button>
+    </div>
     <label class="upload-area" id="uploadArea">
         <input type="file" id="fileInput" accept="video/*">
         <div style="font-size:16px; font-weight:500;">点击或拖拽视频到此处</div>
@@ -26,7 +28,6 @@
             <div style="font-size:15px; font-weight:500;">🖼 上传图片直接编辑</div>
             <div class="upload-tip">点击或拖拽图片到此处</div>
         </label>
-        <span class="upload-tip">图片将直接打开图片编辑器，无需经过截帧步骤</span>
     </div>
     <video id="videoPreview" class="video-preview hidden" controls></video>
     <div class="convert-row" id="convertRow">
@@ -141,6 +142,32 @@
 
 </div>
 
+<!-- ===== 设置弹窗 ===== -->
+<div class="modal-mask hidden" id="settingsModal">
+    <div class="modal">
+        <div class="modal-head">
+            <div class="modal-title">设置</div>
+            <div class="modal-actions">
+                <button class="btn btn-small btn-close" id="closeSettingsBtn" title="关闭">✕</button>
+            </div>
+        </div>
+        <div class="modal-body">
+            <div class="edit-group">
+                <div class="edit-group-title">导出保存路径</div>
+                <div class="edit-row" style="gap:6px;">
+                    <input class="export-path-input" id="settingsExportPath" readonly title="导出保存位置（默认为系统下载文件夹，可自定义）">
+                    <button class="btn btn-small" id="settingsPathBtn">选择路径</button>
+                    <button class="btn btn-small btn-secondary" id="settingsPathReset">默认</button>
+                </div>
+                <div class="settings-tip" style="margin-top:8px;">此路径用于图片编辑器的导出，以及视频帧的逐个导出 / 精灵图导出，导出文件会保存到这个文件夹。</div>
+                <div style="margin-top:14px; text-align:right;">
+                    <button class="btn btn-success btn-small" id="saveSettingsBtn">完成</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ===== 图片编辑模式弹窗 ===== -->
 <div class="modal-mask hidden" id="editorModal">
     <div class="modal">
@@ -150,7 +177,13 @@
                 <button class="btn btn-secondary btn-small" id="resetEditBtn">重置</button>
                 <button class="btn btn-small" id="applyOneBtn">应用到当前帧</button>
                 <button class="btn btn-success btn-small" id="applyAllBtn">应用到全部选中帧</button>
-                <button class="btn btn-small" id="downloadEditBtn" title="把当前编辑结果保存为 PNG 图片">下载</button>
+                <select class="btn-small" id="downloadEditBtn" title="导出当前编辑结果，选择导出格式">
+                    <option value="">导出…</option>
+                    <option value="png">PNG</option>
+                    <option value="jpeg">JPEG</option>
+                    <option value="webp">WebP</option>
+                </select>
+                <span class="export-msg" id="exportMsg"></span>
                 <button class="btn btn-small btn-close" id="closeEditorBtn" title="关闭">✕</button>
             </div>
         </div>

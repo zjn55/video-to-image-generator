@@ -998,9 +998,22 @@ function closeEditor() {
     document.body.style.overflow = '';
 }
 
-// 下载当前编辑结果（上传图片直接编辑的场景尤其有用）
-downloadEditBtn.addEventListener('click', exportCurrentImage);
-function exportCurrentImage() {
+// 导出当前编辑结果（上传图片直接编辑的场景尤其有用）：顶部菜单栏选格式即导出，保存到全局导出路径（首页“设置”配置）
+const exportMsg = document.getElementById('exportMsg');
+function showExportMsg(text, isError) {
+    if (exportMsg) {
+        exportMsg.textContent = text || '';
+        exportMsg.style.color = isError ? '#c0392b' : '#2f855a';
+    }
+}
+downloadEditBtn.addEventListener('change', () => {
+    const fmt = downloadEditBtn.value;
+    if (!fmt) return;
+    downloadEditBtn.value = '';
+    showExportMsg('');
+    exportCurrentImageAs(fmt);
+});
+function exportCurrentImageAs(format) {
     const s = editorState;
     if (s.frameIndex === null) return;
     const f = frames[s.frameIndex];
@@ -1010,12 +1023,39 @@ function exportCurrentImage() {
     applyRegions(final, s);
     applyEraseOps(final, s);
     drawStrokes(final.getContext('2d'), final.width, final.height, s.strokes);
-    const a = document.createElement('a');
-    a.href = final.toDataURL('image/png');
-    a.download = f.fromUpload ? 'edited-image.png' : `frame_${s.frameIndex}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    // 按格式编码（JPEG 无透明通道，用白底填充）
+    let dataUrl, ext;
+    if (format === 'jpeg') {
+        const jc = document.createElement('canvas');
+        jc.width = final.width; jc.height = final.height;
+        const jctx = jc.getContext('2d');
+        jctx.fillStyle = '#ffffff'; jctx.fillRect(0, 0, jc.width, jc.height);
+        jctx.drawImage(final, 0, 0);
+        dataUrl = jc.toDataURL('image/jpeg', 0.92);
+        ext = 'jpg';
+    } else if (format === 'webp') {
+        dataUrl = final.toDataURL('image/webp', 0.9);
+        ext = 'webp';
+    } else {
+        dataUrl = final.toDataURL('image/png');
+        ext = 'png';
+    }
+    const name = f.fromUpload ? ('edited-image.' + ext) : ('frame_' + s.frameIndex + '.' + ext);
+    // 桌面版：保存到全局导出路径（首页“设置”配置，默认系统下载文件夹）
+    if (IS_DESKTOP && window.pywebview && window.pywebview.api && window.pywebview.api.save_exported) {
+        window.pywebview.api.save_exported(dataUrl, ext, getExportDir()).then((path) => {
+            if (!path || path.indexOf('：') !== -1) {
+                showExportMsg(path || '导出失败', true);
+            } else {
+                showExportMsg('已导出到：' + path);
+            }
+        });
+    } else {
+        const a = document.createElement('a');
+        a.href = dataUrl; a.download = name;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        showExportMsg('已导出：' + name);
+    }
 }
 
 function commitToFrame(index) {

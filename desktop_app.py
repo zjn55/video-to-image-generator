@@ -66,6 +66,57 @@ class Api:
             return '转换出错：' + str(e)
         return out_path
 
+    def get_download_dir(self):
+        """返回系统默认下载目录（导出默认保存位置）。"""
+        out_dir = os.path.join(os.path.expanduser('~'), 'Downloads')
+        try:
+            os.makedirs(out_dir, exist_ok=True)
+        except Exception:
+            out_dir = os.path.dirname(os.path.abspath(__file__))
+        return out_dir
+
+    def save_exported(self, data_url, ext, out_dir):
+        """将前端导出的图片保存到指定目录（导出路径设置），返回保存路径或错误信息。"""
+        try:
+            header, b64 = data_url.split(',', 1)
+            data = base64.b64decode(b64)
+        except Exception as e:
+            return '导出数据解析失败：' + str(e)
+        if not out_dir or not isinstance(out_dir, str) or len(out_dir.strip()) < 3:
+            out_dir = self.get_download_dir()
+        try:
+            os.makedirs(out_dir, exist_ok=True)
+        except Exception:
+            out_dir = self.get_download_dir()
+        fname = 'edited-image.' + (ext or 'png')
+        out = os.path.join(out_dir, fname)
+        try:
+            with open(out, 'wb') as f:
+                f.write(data)
+        except Exception as e:
+            return '保存失败：' + str(e)
+        return out
+
+    def save_zip(self, b64_data, out_dir, name):
+        """保存前端生成的 ZIP（base64）到指定导出目录，返回保存路径或错误信息。"""
+        try:
+            data = base64.b64decode(b64_data)
+        except Exception as e:
+            return '数据解析失败：' + str(e)
+        if not out_dir or not isinstance(out_dir, str) or len(out_dir.strip()) < 3:
+            out_dir = self.get_download_dir()
+        try:
+            os.makedirs(out_dir, exist_ok=True)
+        except Exception:
+            out_dir = self.get_download_dir()
+        out = os.path.join(out_dir, name or 'export.zip')
+        try:
+            with open(out, 'wb') as f:
+                f.write(data)
+        except Exception as e:
+            return '保存失败：' + str(e)
+        return out
+
 
 def main():
     api = Api()

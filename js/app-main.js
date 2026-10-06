@@ -150,6 +150,11 @@ let IS_DESKTOP = false;
 window.addEventListener('pywebviewready', function () {
     IS_DESKTOP = !!(window.pywebview && window.pywebview.api && window.pywebview.api.convert_video);
     fillConvertFormats();
+    // 初始化全局导出路径：优先读本地保存，否则用系统下载文件夹
+    loadExportDir();
+    if (!getExportDir() && window.pywebview && window.pywebview.api && window.pywebview.api.get_download_dir) {
+        window.pywebview.api.get_download_dir().then((d) => { if (d && !getExportDir()) setExportDir(d); });
+    }
 });
 const REC_MIME = {
     mp4: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
@@ -840,12 +845,18 @@ exportZipBtn.addEventListener('click', async () => {
     });
     
     const blob = await zip.generateAsync({ type: 'blob' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'frames_export.zip';
-    a.click();
-    URL.revokeObjectURL(url);
+    if (IS_DESKTOP && window.pywebview && window.pywebview.api && window.pywebview.api.save_zip) {
+        const b64 = await blobToBase64(blob);
+        const res = await window.pywebview.api.save_zip(b64, getExportDir(), 'frames_export.zip');
+        status3.textContent = (res && res.indexOf('：') !== -1) ? res : ('已导出到：' + (res || ''));
+    } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'frames_export.zip';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
     
     exportZipBtn.disabled = false;
     exportZipBtn.textContent = '导出 ZIP 压缩包';
@@ -1037,7 +1048,7 @@ genSpriteBtn.addEventListener('click', () => {
     spritePreview.classList.remove('hidden');
 });
 
-downloadSpriteBtn.addEventListener('click', () => {
+downloadSpriteBtn.addEventListener('click', async () => {
     if (!spriteSheets.length) return;
     const zip = new JSZip();
     const byGroup = {};
@@ -1046,12 +1057,59 @@ downloadSpriteBtn.addEventListener('click', () => {
         const folder = zip.folder(sanitizeFolderName(gn));
         byGroup[gn].forEach(s => folder.file(s.name, s.url.split(',')[1], { base64: true }));
     });
-    zip.generateAsync({ type: 'blob' }).then(blob => {
+    const blob = await zip.generateAsync({ type: 'blob' });
+    if (IS_DESKTOP && window.pywebview && window.pywebview.api && window.pywebview.api.save_zip) {
+        const b64 = await blobToBase64(blob);
+        const res = await window.pywebview.api.save_zip(b64, getExportDir(), 'sprite_sheets.zip');
+        const st = document.getElementById('status3');
+        if (st) st.textContent = (res && res.indexOf('：') !== -1) ? res : ('已导出到：' + (res || ''));
+    } else {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = 'sprite_sheets.zip';
         a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    }
+});
+
+// ========== 设置弹窗：导出保存路径 ==========
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsModal = document.getElementById('settingsModal');
+const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+const settingsExportPath = document.getElementById('settingsExportPath');
+const settingsPathBtn = document.getElementById('settingsPathBtn');
+const settingsPathReset = document.getElementById('settingsPathReset');
+function refreshSettingsPath() {
+    if (settingsExportPath) settingsExportPath.value = getExportDir() || '（默认：系统下载文件夹）';
+}
+function openSettings() {
+    // 尚无导出路径且桌面版可用时，取系统下载目录作默认
+    if (!getExportDir() && IS_DESKTOP && window.pywebview && window.pywebview.api && window.pywebview.api.get_download_dir) {
+        window.pywebview.api.get_download_dir().then((d) => { if (d && !getExportDir()) { setExportDir(d); refreshSettingsPath(); } });
+    }
+    refreshSettingsPath();
+    if (settingsModal) settingsModal.classList.remove('hidden');
+}
+function closeSettings() { if (settingsModal) settingsModal.classList.add('hidden'); }
+settingsBtn.addEventListener('click', openSettings);
+closeSettingsBtn.addEventListener('click', closeSettings);
+saveSettingsBtn.addEventListener('click', closeSettings);
+settingsPathBtn.addEventListener('click', () => {
+    if (!(window.create_file_dialog)) return;
+    window.create_file_dialog(1 /* FOLDER_DIALOG */, getExportDir() || '', '', []).then((res) => {
+        if (res && res.length && res[0]) {
+            setExportDir(res[0].replace(/[\\/]+$/, ''));
+            refreshSettingsPath();
+        }
     });
+});
+settingsPathReset.addEventListener('click', () => {
+    if (IS_DESKTOP && window.pywebview && window.pywebview.api && window.pywebview.api.get_download_dir) {
+        window.pywebview.api.get_download_dir().then((d) => { setExportDir(d || ''); refreshSettingsPath(); });
+    } else {
+        setExportDir('');
+        refreshSettingsPath();
+    }
 });
 

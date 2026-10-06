@@ -61,3 +61,28 @@ let frameOrder = [];
 let frameGroups = [];
 let groupSeq = 0;
 
+// ===== 全局导出保存路径 =====
+// 图片编辑器导出、视频帧逐个导出 / 精灵图导出共用；持久化到 localStorage，默认系统下载文件夹
+let exportDir = '';
+const EXPORT_DIR_KEY = 'vti_export_dir';
+function getExportDir() {
+    return exportDir || '';
+}
+function setExportDir(dir) {
+    exportDir = dir || '';
+    try { localStorage.setItem(EXPORT_DIR_KEY, exportDir); } catch (e) {}
+}
+function loadExportDir() {
+    try { exportDir = localStorage.getItem(EXPORT_DIR_KEY) || ''; } catch (e) { exportDir = ''; }
+    return exportDir;
+}
+// Blob/ArrayBuffer 转 base64（桌面版保存导出文件用）
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => { const s = fr.result; resolve(s.split(',')[1]); };
+        fr.onerror = reject;
+        fr.readAsDataURL(blob);
+    });
+}
+

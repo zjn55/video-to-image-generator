@@ -51,13 +51,12 @@ body {
 }
 .upload-area input { display: none; }
 .upload-tip { color: #666; margin-top: 8px; font-size: 14px; }
-.img-upload-row { display: flex; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
-.img-upload-row .upload-tip { margin-top: 0; }
+.img-upload-row { margin-top: 16px; }
 .img-upload-area {
-    display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 4px; cursor: pointer; padding: 16px 26px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; cursor: pointer; padding: 26px;
     border: 2px dashed #bbb; border-radius: 10px; background: #f8fafc;
-    color: #333; min-width: 220px; text-align: center;
+    color: #333; width: 100%; box-sizing: border-box; text-align: center;
     transition: border-color .15s, background .15s;
 }
 .img-upload-area:hover, .img-upload-area.dragover { border-color: #1565c0; background: #eef4fd; }
@@ -615,3 +614,16 @@ button, input, select { font-family: inherit; }
 /* 防止在编辑面板 / 区域列表 / 画布上误选中界面文字（Shift 多选时误触发“复制文字”） */
 .edit-group,.edit-row,.region-item,.draw-tool-row,.editor-preview{-webkit-user-select:none;user-select:none;}
 .editor-preview input,.editor-preview textarea,.edit-group input,.edit-group textarea{-webkit-user-select:text;user-select:text;}
+/* 导出格式选择浮层 */
+.export-choice{display:flex;align-items:center;gap:8px;background:#f4f6fb;border:1px solid #e3e6ef;border-radius:8px;padding:6px 10px;margin-bottom:8px;}
+.export-choice-label{font-size:12px;color:#555;font-weight:600;}
+.export-choice-hint{font-size:12px;color:#2f855a;margin-left:4px;}
+/* 导出下拉与导出结果提示 */
+.export-msg{font-size:12px;color:#2f855a;margin-left:6px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4;}
+#downloadEditBtn{max-width:150px;padding:3px 6px;}
+/* 导出设置栏：格式下拉 + 保存路径 */
+.export-bar{display:flex;align-items:center;gap:6px;background:#f4f6fb;border:1px solid #e3e6ef;border-radius:8px;padding:6px 10px;margin-bottom:8px;flex-wrap:wrap;}
+.export-label{font-size:12px;color:#555;font-weight:600;flex-shrink:0;}
+.export-path-input{flex:1;min-width:160px;font-size:12px;color:#333;border:1px solid #d5d9e0;border-radius:4px;padding:3px 6px;background:#fff;}
+.settings-tip{font-size:12px;color:#777;line-height:1.5;}
+#settingsExportPath{flex:1;min-width:160px;}
