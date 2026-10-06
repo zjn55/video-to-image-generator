@@ -23,7 +23,7 @@ function handleFile(file) {
     const onMeta = () => {
         videoDuration = videoPreview2.duration;
         status2.textContent = `视频时长：${videoDuration.toFixed(2)} 秒，设置区间和间隔后点击截帧，或拖动播放条手动添加某一帧`;
-        step2.classList.remove('hidden');
+        showStep(2);
         videoScrubber.classList.remove('hidden');
         frames = [];
         selectedFrames = [];
@@ -384,7 +384,7 @@ function renderFrames() {
 }
 
 function syncStatus3() {
-    if (step3.classList.contains('hidden')) return;
+    if (!step3.classList.contains('active')) return;
     status3.textContent = `已选择 ${selectedFrames.length} 帧，请选择导出方式`;
 }
 
@@ -430,26 +430,21 @@ invertBtn.addEventListener('click', () => {
     syncStatus3();
 });
 
-// ========== 进入第三步 ==========
+// ========== 进入下一步（工作区切换） ==========
 goStep3Btn.addEventListener('click', () => {
-    // 先进入“调整帧顺序”步骤
     enterOrderStep();
-    stepOrder.classList.remove('hidden');
-    stepOrder.scrollIntoView({ behavior: 'smooth' });
+    showStep(3);
 });
 backToStep2Btn.addEventListener('click', () => {
-    stepOrder.classList.add('hidden');
-    step2.scrollIntoView({ behavior: 'smooth' });
+    showStep(2);
 });
 goStep3Btn2.addEventListener('click', () => {
-    // 进入导出设置时不隐藏排序步骤，保持可见以便对照调整
     syncFrameOrder();
     renderZipGroupList();
     renderSpriteDropdown();
-    step3.classList.remove('hidden');
+    showStep(4);
     status3.textContent = `已选择 ${selectedFrames.length} 帧，请选择导出方式`;
     spritePreview.classList.add('hidden');
-    step3.scrollIntoView({ behavior: 'smooth' });
 });
 
 // ---- 导出视图选项卡 ----
@@ -1112,4 +1107,33 @@ settingsPathReset.addEventListener('click', () => {
         refreshSettingsPath();
     }
 });
+
+// ========== 菜单栏：文件（打开视频 / 打开图片） ==========
+const fileMenuBtn = document.getElementById('fileMenuBtn');
+const fileDropdown = document.getElementById('fileDropdown');
+const menuOpenVideo = document.getElementById('menuOpenVideo');
+const menuOpenImage = document.getElementById('menuOpenImage');
+if (fileMenuBtn && fileDropdown) {
+    fileMenuBtn.addEventListener('click', (e) => { e.stopPropagation(); fileDropdown.classList.toggle('hidden'); });
+    menuOpenVideo.addEventListener('click', () => { fileDropdown.classList.add('hidden'); document.getElementById('fileInput').click(); });
+    menuOpenImage.addEventListener('click', () => { fileDropdown.classList.add('hidden'); document.getElementById('imageInput').click(); });
+    document.addEventListener('click', (e) => {
+        if (!fileMenuBtn.contains(e.target) && !fileDropdown.contains(e.target)) fileDropdown.classList.add('hidden');
+    });
+}
+
+// ========== 工作区步骤切换（每步独占） ==========
+function showStep(n) {
+    document.querySelectorAll('.wb-section').forEach(s => s.classList.toggle('active', +s.dataset.step === n));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+const nextStep1 = document.getElementById('nextStep1');
+const backToStep1Btn = document.getElementById('backToStep1Btn');
+const backToStep3Btn = document.getElementById('backToStep3Btn');
+nextStep1.addEventListener('click', () => {
+    if (!videoFile) { showToast('请先在第一步上传一个视频'); return; }
+    showStep(2);
+});
+backToStep1Btn.addEventListener('click', () => showStep(1));
+backToStep3Btn.addEventListener('click', () => showStep(3));
 

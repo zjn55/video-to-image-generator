@@ -999,18 +999,10 @@ function closeEditor() {
 }
 
 // 导出当前编辑结果（上传图片直接编辑的场景尤其有用）：顶部菜单栏选格式即导出，保存到全局导出路径（首页“设置”配置）
-const exportMsg = document.getElementById('exportMsg');
-function showExportMsg(text, isError) {
-    if (exportMsg) {
-        exportMsg.textContent = text || '';
-        exportMsg.style.color = isError ? '#c0392b' : '#2f855a';
-    }
-}
 downloadEditBtn.addEventListener('change', () => {
     const fmt = downloadEditBtn.value;
     if (!fmt) return;
     downloadEditBtn.value = '';
-    showExportMsg('');
     exportCurrentImageAs(fmt);
 });
 function exportCurrentImageAs(format) {
@@ -1045,16 +1037,16 @@ function exportCurrentImageAs(format) {
     if (IS_DESKTOP && window.pywebview && window.pywebview.api && window.pywebview.api.save_exported) {
         window.pywebview.api.save_exported(dataUrl, ext, getExportDir()).then((path) => {
             if (!path || path.indexOf('：') !== -1) {
-                showExportMsg(path || '导出失败', true);
+                showToast(path || '导出失败', true);
             } else {
-                showExportMsg('已导出到：' + path);
+                showToast('已导出到：' + path);
             }
         });
     } else {
         const a = document.createElement('a');
         a.href = dataUrl; a.download = name;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        showExportMsg('已导出：' + name);
+        showToast('已导出：' + name);
     }
 }
 

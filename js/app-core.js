@@ -85,4 +85,15 @@ function blobToBase64(blob) {
         fr.readAsDataURL(blob);
     });
 }
+// 屏幕中央提示（几秒后自动消失）
+let toastTimer = null;
+function showToast(msg, isError) {
+    const t = document.getElementById('toast');
+    if (!t) return;
+    t.textContent = msg || '';
+    t.classList.toggle('toast-error', !!isError);
+    t.classList.remove('hidden');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.classList.add('hidden'); }, 2500);
+}
 

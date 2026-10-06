@@ -10,18 +10,39 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<div class="container">
+<header class="menubar">
+    <div class="menubar-inner">
+        <div class="menubar-left">
+            <span class="app-title">视频转图片生成工具</span>
+            <div class="menu-wrap">
+                <button class="menu-btn" id="fileMenuBtn">文件 ▾</button>
+                <div class="menu-dropdown hidden" id="fileDropdown">
+                    <button class="menu-item" id="menuOpenVideo">打开视频…</button>
+                    <button class="menu-item" id="menuOpenImage">打开图片…</button>
+                </div>
+            </div>
+        </div>
+        <div class="menubar-right">
+            <button class="menu-btn" id="settingsBtn">⚙ 设置</button>
+        </div>
+    </div>
+</header>
+<div class="workbench">
 
 <!-- 步骤1：上传 -->
-<div class="step" id="step1">
-    <div class="step-title"><span class="step-num">1</span>上传视频
-        <button class="btn btn-secondary btn-small" id="settingsBtn" title="导出保存路径等设置" style="float:right;">⚙ 设置</button>
-    </div>
+<section class="wb-section active" data-step="1" id="step1">
+    <div class="step-title"><span class="step-num">1</span>上传视频</div>
     <label class="upload-area" id="uploadArea">
         <input type="file" id="fileInput" accept="video/*">
         <div style="font-size:16px; font-weight:500;">点击或拖拽视频到此处</div>
         <div class="upload-tip">支持 MP4 / WebM / MOV 等浏览器可播放格式</div>
     </label>
+    <div class="convert-row" id="convertRow">
+        <button class="btn btn-secondary" id="convertBtn" title="把当前视频重新录制为另一种格式（需完整播放一遍）">转换格式</button>
+        <label class="convert-label">目标格式：<select id="convertFmt"></select></label>
+        <a class="hidden audio-dl" id="convertDlLink" download>下载转换结果</a>
+        <span class="audio-status" id="convertStatus"></span>
+    </div>
     <div class="img-upload-row">
         <label class="img-upload-area" id="imageUploadArea">
             <input type="file" id="imageInput" accept="image/*">
@@ -30,16 +51,16 @@
         </label>
     </div>
     <video id="videoPreview" class="video-preview hidden" controls></video>
-    <div class="convert-row" id="convertRow">
-        <button class="btn btn-secondary" id="convertBtn" title="把当前视频重新录制为另一种格式（需完整播放一遍）">转换格式</button>
-        <label class="convert-label">目标格式：<select id="convertFmt"></select></label>
-        <a class="hidden audio-dl" id="convertDlLink" download>下载转换结果</a>
-        <span class="audio-status" id="convertStatus"></span>
+    <div class="step-nav">
+        <span class="step-indicator">步骤 1 / 4</span>
+        <div class="step-nav-btns">
+            <button class="btn btn-success" id="nextStep1">下一步：截取帧 →</button>
+        </div>
     </div>
-</div>
+</section>
 
 <!-- 步骤2：截帧设置 + 选择 -->
-<div class="step hidden" id="step2">
+<section class="wb-section" data-step="2" id="step2">
     <div class="step-title"><span class="step-num">2</span>截取并选择帧</div>
 
     <div class="video-scrubber hidden" id="videoScrubber">
@@ -81,27 +102,34 @@
 
     <div class="frames-grid hidden" id="framesGrid"></div>
 
-    <div style="margin-top: 20px; text-align: right;">
-        <button class="btn btn-success" id="goStep3Btn" disabled>下一步：导出设置 →</button>
+    <div class="step-nav">
+        <span class="step-indicator">步骤 2 / 4</span>
+        <div class="step-nav-btns">
+            <button class="btn btn-secondary" id="backToStep1Btn">← 上一步</button>
+            <button class="btn btn-success" id="goStep3Btn" disabled>下一步：导出设置 →</button>
+        </div>
     </div>
-</div>
+</section>
 
 
 <!-- 步骤3：调整帧顺序与分组 -->
-<div class="step hidden" id="stepOrder">
+<section class="wb-section" data-step="3" id="stepOrder">
     <div class="step-title"><span class="step-num">3</span>调整帧顺序与分组</div>
     <div class="status" id="statusOrder"></div>
     <div class="groups-area" id="groupsArea"></div>
     <div class="order-tip">拖动帧缩略图排序；拖到最下方「新建分组」区可创建新分组并放入；双击分组标题可重命名。导出按分组顺序拼接。</div>
-    <div style="margin-top: 20px; text-align: right;">
-        <button class="btn btn-secondary" id="backToStep2Btn">← 返回选择</button>
-        <button class="btn btn-success" id="goStep3Btn2">下一步：导出设置 →</button>
+    <div class="step-nav">
+        <span class="step-indicator">步骤 3 / 4</span>
+        <div class="step-nav-btns">
+            <button class="btn btn-secondary" id="backToStep2Btn">← 上一步</button>
+            <button class="btn btn-success" id="goStep3Btn2">下一步：导出设置 →</button>
+        </div>
     </div>
-</div>
+</section>
 
 
 <!-- 步骤4：导出 -->
-<div class="step hidden" id="step3">
+<section class="wb-section" data-step="4" id="step3">
     <div class="step-title"><span class="step-num">4</span>导出设置</div>
     <div class="status" id="status3"></div>
 
@@ -138,7 +166,13 @@
             </div>
         </div>
     </div>
-</div>
+    <div class="step-nav">
+        <span class="step-indicator">步骤 4 / 4</span>
+        <div class="step-nav-btns">
+            <button class="btn btn-secondary" id="backToStep3Btn">← 上一步</button>
+        </div>
+    </div>
+</section>
 
 </div>
 
@@ -183,7 +217,6 @@
                     <option value="jpeg">JPEG</option>
                     <option value="webp">WebP</option>
                 </select>
-                <span class="export-msg" id="exportMsg"></span>
                 <button class="btn btn-small btn-close" id="closeEditorBtn" title="关闭">✕</button>
             </div>
         </div>
@@ -358,5 +391,6 @@
 <script src="js/app-editor-region.js"></script>
 <script src="js/app-editor-annotate.js"></script>
 <script src="js/app-editor-canvas.js"></script>
+<div class="toast hidden" id="toast"></div>
 </body>
 </html>
