@@ -71,7 +71,8 @@
 2. 运行 **`python build.py`** 自动重新打包（约 1 分钟），新 exe 覆盖到 `dist\视频转图片生成工具\`。
 3. 运行新 exe 即可。
 
-> 若更换 ffmpeg：把新的 `ffmpeg.exe` 放到 `ffmpeg\` 后重新打包。
+> **在任何电脑上打包**：`build.py` 以脚本自身所在目录为基准，不写死某台机器的路径，克隆仓库到任意电脑（需装 Python 与 `pip install pyinstaller pywebview`）后直接 `python build.py` 即可。
+> **ffmpeg 可选**：仓库未包含体积较大的 `ffmpeg/` 目录。若本地有 `ffmpeg/ffmpeg.exe`，`build.py` 会自动把它打包进去（提供 OGV/MOV/AVI 等格式转换）；没有也能正常打包，只是格式转换不可用（页面会提示“未找到内置 ffmpeg”）。
 > 打包会忽略 `dist/`、`build/`、`ffmpeg/` 等体积大的本地文件（见 `.gitignore`），GitHub 仓库只含源码与打包脚本。
 
 ## 兼容性
